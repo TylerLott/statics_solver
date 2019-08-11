@@ -3,6 +3,53 @@ from numpy.linalg import inv
 import math
 
 
+class Member:
+
+    def __init__(self, x_s, y_s, z_s, x_e, y_e, z_e):
+        self.x_start = x_s
+        self.y_start = y_s
+        self.z_start = z_s
+        self.x_end = x_e
+        self.y_end = y_e
+        self.z_end = z_e
+
+    def start_point(self):
+        x = self.x_start
+        y = self.y_start
+        z = self.z_start
+
+        return [x, y, z]
+
+    def end_point(self):
+        x = self.x_end
+        y = self.y_end
+        z = self.z_end
+
+        return [x, y, z]
+
+    def line_vec(self):
+        i = self.x_end - self.x_start
+        j = self.y_end - self.y_start
+        k = self.z_end - self.z_start
+
+        return [i, j, k]
+
+    def find_length(self):
+        i = self.x_end - self.x_start
+        j = self.y_end - self.y_start
+        k = self.z_end - self.z_start
+        sq = i ** 2 + j ** 2 + k ** 2
+        length = np.sqrt(sq)
+
+        return length
+
+
+# find if force is on a line by finding its distance from the
+
+# create a Member class that the forces must act on
+# might be a better option to restrict this with the UI
+# if you create a member class you could potentially do frame and machines though
+
 class ForceGen:
     # this class is used to generate the forces for the problem
     # as it creates the forces it puts them into a list
@@ -91,33 +138,122 @@ class Moment:
         return self.c
 
 
-class Member:
+class ForceAreaGen:
+    # this class is used to generate the forces for the problem
+    # as it creates the forces it puts them into a list
+    # this list is used by all of the sum and equation methods
+    forceAreas = []
 
-    def __init__(self, s_x, s_y, s_z, e_x, e_y, e_z):
-        self.s_x = s_x
-        self.s_y = s_y
-        self.s_z = s_z
-        self.e_x = e_x
-        self.e_y = e_y
-        self.e_z = e_z
+    def __init__(self, x, y, z, a, b, c):
+        self.x = ForceArea(x, y, z, a, b, c)
+        self.forceAreas.append(self.x)
+        self.ret()
 
-    def get_s_x(self):
-        return self.s_x
+    def ret(self):
+        return self.x
 
-    def get_s_y(self):
-        return self.s_y
 
-    def get_s_z(self):
-        return self.s_z
+class ForceArea:
+    # This takes a force area and outputs an equivalent point force in order to be able to calculate the forces for the
+    # unknown forces and moments in the model input by the user.
 
-    def get_e_x(self):
-        return self.e_x
+    def __init__(self, x_1, y_1, z_1, x_2, y_2, z_2, i_1, j_1, k_1, i_2, j_2, k_2):
+        self.x_1 = x_1
+        self.y_1 = y_1
+        self.z_1 = z_1
+        self.x_2 = x_2
+        self.y_2 = y_2
+        self.z_2 = z_2
+        self.i_1 = i_1
+        self.j_1 = j_1
+        self.k_1 = k_1
+        self.i_2 = i_2
+        self.j_2 = j_2
+        self.k_2 = k_2
+        self.point_force_eqi()
 
-    def get_e_y(self):
-        return self.e_y
+    def point_force_eqi(self):
+        x_avg = self.x_2 - self.x_1
+        y_avg = self.y_2 - self.y_1
+        z_avg = self.z_2 - self.z_1
 
-    def get_e_z(self):
-        return self.e_z
+        i_avg = self.i_2 - self.i_1
+        j_avg = self.j_2 - self.j_1
+        k_avg = self.k_2 - self.k_1
+
+        ForceGen(x_avg, y_avg, z_avg, i_avg, j_avg, k_avg)
+
+    
+
+
+# define classes for all of the support types
+# Rigid, Ball-joint, Simple, Bearing, Hinge
+class Support:
+    def __init__(self, x, y, z):
+        self.x = x
+        self.y = y
+        self.z = z
+
+    def rigid(self):
+        ForceGen(self.x, self.y, self.z, 'unk', 0, 0)
+        ForceGen(self.x, self.y, self.z, 0, 'unk', 0)
+        ForceGen(self.x, self.y, self.z, 0, 0, 'unk')
+        MomentGen(self.x, self.y, self.z, 'unk', 0, 0)
+        MomentGen(self.x, self.y, self.z, 0, 'unk', 0)
+        MomentGen(self.x, self.y, self.z, 0, 0, 'unk')
+
+    def balljoint(self):
+        ForceGen(self.x, self.y, self.z, 'unk', 0, 0)
+        ForceGen(self.x, self.y, self.z, 0, 'unk', 0)
+        ForceGen(self.x, self.y, self.z, 0, 0, 'unk')
+
+    def simple_x(self):
+        ForceGen(self.x, self.y, self.z, 'unk', 0, 0)
+
+    def simple_y(self):
+        ForceGen(self.x, self.y, self.z, 0, 'unk', 0)
+
+    def simple_z(self):
+        ForceGen(self.x, self.y, self.z, 0, 0, 'unk')
+
+    def bearing_x(self):
+        ForceGen(self.x, self.y, self.z, 0, 'unk', 0)
+        ForceGen(self.x, self.y, self.z, 0, 0, 'unk')
+        MomentGen(self.x, self.y, self.z, 0, 'unk', 0)
+        MomentGen(self.x, self.y, self.z, 0, 0, 'unk')
+
+    def bearing_y(self):
+        ForceGen(self.x, self.y, self.z, 'unk', 0, 0)
+        ForceGen(self.x, self.y, self.z, 0, 0, 'unk')
+        MomentGen(self.x, self.y, self.z, 'unk', 0, 0)
+        MomentGen(self.x, self.y, self.z, 0, 0, 'unk')
+
+    def bearing_z(self):
+        ForceGen(self.x, self.y, self.z, 'unk', 0, 0)
+        ForceGen(self.x, self.y, self.z, 0, 'unk', 0)
+        MomentGen(self.x, self.y, self.z, 'unk', 0, 0)
+        MomentGen(self.x, self.y, self.z, 0, 'unk', 0)
+
+    def hinge_x(self):
+        ForceGen(self.x, self.y, self.z, 'unk', 0, 0)
+        ForceGen(self.x, self.y, self.z, 0, 'unk', 0)
+        ForceGen(self.x, self.y, self.z, 0, 0, 'unk')
+        MomentGen(self.x, self.y, self.z, 0, 'unk', 0)
+        MomentGen(self.x, self.y, self.z, 0, 0, 'unk')
+
+    def hinge_y(self):
+        ForceGen(self.x, self.y, self.z, 'unk', 0, 0)
+        ForceGen(self.x, self.y, self.z, 0, 'unk', 0)
+        ForceGen(self.x, self.y, self.z, 0, 0, 'unk')
+        MomentGen(self.x, self.y, self.z, 'unk', 0, 0)
+        MomentGen(self.x, self.y, self.z, 0, 0, 'unk')
+
+    def hinge_z(self):
+        ForceGen(self.x, self.y, self.z, 'unk', 0, 0)
+        ForceGen(self.x, self.y, self.z, 0, 'unk', 0)
+        ForceGen(self.x, self.y, self.z, 0, 0, 'unk')
+        MomentGen(self.x, self.y, self.z, 'unk', 0, 0)
+        MomentGen(self.x, self.y, self.z, 0, 'unk', 0)
 
 
 def sum_x():
@@ -295,9 +431,6 @@ def eq_moment():
         point = [eq_a, eq_b, eq_c]
 
         for compare in MomentGen.moments:
-            x = instance.get_x() - compare.get_x()
-            y = instance.get_y() - compare.get_y()
-            z = instance.get_z() - compare.get_z()
             if compare.get_a() == 'unk':
                 point[0].append(1)
                 point[1].append(0)
@@ -325,6 +458,58 @@ def eq_moment():
             # eq_a should look like[1i, 1j, 1k, 2i, 2j, 2k, ... , 1ma, 1mb, 1mc, 2ma, 2mb, 2mc, ... ]
         eqs_m.append(point)
     return eqs_m
+
+
+def on_member(line_pt_1, line_pt_2, point_x, point_y, point_z):
+    # line start point
+    x_1 = line_pt_1[0]
+    y_1 = line_pt_1[1]
+    z_1 = line_pt_1[2]
+
+    # line end point
+    x_2 = line_pt_2[0]
+    y_2 = line_pt_2[1]
+    z_2 = line_pt_2[2]
+
+    # |A cross B| / |A|
+
+    A = [x_2 - x_1, y_2 - y_1, z_2 - z_1]
+    B = [x_1 - point_x, y_1 - point_y, z_1 - point_z]
+
+    cross = cross_vec(A, B)
+
+    mag_1 = 0
+    mag_2 = 0
+
+    for num in range(len(cross)):
+        cross[num] = cross[num] ** 2
+        B[num] = B[num] ** 2
+        mag_1 += cross[num]
+        mag_2 += B[num]
+
+    distance = mag_1 / mag_2
+
+    # distance from each of the points of a member
+    dist_1 = [x_1 - point_x, y_1 - point_y, z_1 - point_z]
+    dist_2 = [x_2 - point_x, y_2 - point_y, z_2 - point_z]
+
+    mag_d_1 = 0
+    mag_d_2 = 0
+
+    for num in range(len(dist_1)):
+        dist_1[num] = dist_1[num] ** 2
+        dist_2[num] = dist_2[num] ** 2
+        mag_d_1 += dist_1[num]
+        mag_d_2 += dist_2[num]
+
+    between_points = False
+    if mag_d_2 >= 0 >= mag_d_1 or mag_d_1 >= 0 >= mag_d_2:
+        between_points = True
+
+    if between_points is True and distance < .001:
+        return True
+    else:
+        return False
 
 
 def cross_vec(vec_a, vec_b):
@@ -443,7 +628,7 @@ def format_matrix(a_matrix, b_matrix):
     # if the index for the row is not in that list then pop that index for both a and b matrix
     column_counter = 0
     for row in range(1):
-        for columns in a_matrix[0]:
+        for columns in range(len(a_matrix[0])):
             column_counter += 1
     for row in reversed(range(column_counter, len(a_matrix))):
         a_matrix.pop(row)
@@ -453,22 +638,65 @@ def format_matrix(a_matrix, b_matrix):
 
 
 def solve():
-
     matrix = format_matrix(all_eqs(), all_sums())
     a_matrix = matrix[0]
     b_matrix = matrix[1]
-
     list_of_answers = np.matmul(inv(a_matrix), b_matrix)
     return list_of_answers
 
 
+def convert_angle_mag_input():
+    pass
+
+
+# create a force area class
+    # takes:
+        # start x,y,z
+        # end x,y,z
+        # start i,j,k
+        # end i,j,k
+        # or just a function for the change in x,y,z
+    # finds center of mass of the forces and converts to a point force for the static analysis
+
+# create a shear and Bending moment between any two points
+    # takes:
+        # start x,y,z
+        # end x,y,z
+    # finds:
+        # all forces along the line using distance from line linear algebra formula
+        # all force areas along the line using distance from line to the converted point force, then uses the equation for
+        # the change in the force to find the shear and bending moment at any point on the bar
+        # all the forces at the start and end points of the member
+    # gives:
+        # i,j,k for the shear force at any point between the start and end
+        # a,b,c bending moments at any point between the start and end
+
+# create a method to find the eigenvalues of the a matrix to determine if its determinant
+
+# create method to determine if a point at the end of the member has 2 connections to the other point on that member
+# if it does then it cant be done because its some sort of truss or frame
+# if it doesnt then sum the forces on each side of the member by comparing the points to the points of all other members
+# also sum all of the moments
+# use those moments and forces as acting on that point of the member
+# find all forces between the members and use them in the shear and moment calculations
+# to get the shear and moment calculations select a number of points between the points to calculate the magnitudes
+
+# create a method that removes any moments that are cancelled out by bearing or hinge forces at different points
+
+
+# output answers in angles and degrees
+
+
 def main():
+    # forces
     ForceGen(0, 0, 0, 'unk', 'unk', 'unk')
     ForceGen(.5, 4, 0, 60, -40, 57)
     ForceGen(1, 0, 0, 8, -190, 10)
 
+    # moments
     MomentGen(0, 0, 0, 'unk', 'unk','unk')
 
+    # solve
     print(solve())
 
 
